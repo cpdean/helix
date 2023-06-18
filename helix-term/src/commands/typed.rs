@@ -2925,7 +2925,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let rendered = do_template(input);
+            let rendered = do_template(input, cx);
             let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
@@ -2983,12 +2983,26 @@ pub(super) fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-fn do_template(template: &str) -> Result<String, minijinja::Error> {
+fn extract_template_variables(cx: &mut compositor::Context) -> minijinja::value::Value {
+    // TODO: use the cx object to retrieve interesting data to give to the template.
+    // filename
+    // line number
+    // x,y position
+    // pipe main selection to the subshell's stdin
+    let (view, doc) = current!(cx.editor);
+
+    let file_path = doc.path().map(|p| p.to_str()).unwrap_or(Some(""));
+    context!(filename => file_path)
+}
+
+fn do_template(template: &str, cx: &mut compositor::Context) -> Result<String, minijinja::Error> {
+    let template_variables = extract_template_variables(cx);
+
     let mut env = Environment::new();
     env.add_template("shell_expansion", template)?;
     let tmpl = env.get_template("shell_expansion")?;
 
-    tmpl.render(context!(filename => "BigGoats.txt"))
+    tmpl.render(template_variables)
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
