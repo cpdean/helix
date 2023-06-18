@@ -2150,12 +2150,18 @@ fn run_shell_command(
     args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
+    // try doing template stuff here now
+    let re_constituted_string = args.join(" ");
+    let args = match do_template(&re_constituted_string, cx) {
+        Ok(rendered) => rendered,
+        Err(_e) => args.join(" "),
+    };
+
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     let shell = cx.editor.config().shell.clone();
-    let args = args.join(" ");
 
     let callback = async move {
         let (output, success) = shell_impl_async(&shell, &args, None).await?;
@@ -2943,8 +2949,8 @@ pub(super) fn command_mode(cx: &mut Context) {
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
-                // todo, pipe, pipe-to, run-shell-command
-                let shellwords = if args[0] == "sh" {
+                // todo: pipe, pipe-to
+                let shellwords = if args[0] == "sh" || args[0] == "run-shell-command" {
                     match &rendered {
                         Ok(r) => Shellwords::from_template(r),
                         Err(_) => Shellwords::from(input),
