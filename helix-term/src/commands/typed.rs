@@ -2985,14 +2985,25 @@ pub(super) fn command_mode(cx: &mut Context) {
 
 fn extract_template_variables(cx: &mut compositor::Context) -> minijinja::value::Value {
     // TODO: use the cx object to retrieve interesting data to give to the template.
-    // filename
-    // line number
-    // x,y position
+    // anchor column,line position
     // pipe main selection to the subshell's stdin
     let (view, doc) = current!(cx.editor);
 
+    // cursor line number and column
+    let text = doc.text();
+    let pos = doc.selection(view.id).primary().cursor(text.slice(..));
+    let line = text.char_to_line(pos);
+    let line_start = text.line_to_byte(line);
+    let column = text.char_to_byte(pos) - line_start;
+
     let file_path = doc.path().map(|p| p.to_str()).unwrap_or(Some(""));
-    context!(filename => file_path)
+    context!(
+        filename => file_path,
+        // add so it matches line number in editor
+        cursor_line => line + 1,
+        // TODO: maybe add 1 to column? not sure what tooling tends to want
+        cursor_column => column,
+    )
 }
 
 fn do_template(template: &str, cx: &mut compositor::Context) -> Result<String, minijinja::Error> {
