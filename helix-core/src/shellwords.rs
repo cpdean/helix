@@ -39,6 +39,57 @@ pub struct Shellwords<'a> {
 
 impl<'a> From<&'a str> for Shellwords<'a> {
     fn from(input: &'a str) -> Self {
+        let (state, words, parts) = Shellwords::parse_into_words(input);
+        Self {
+            state,
+            words,
+            parts,
+        }
+    }
+}
+
+impl<'a> Shellwords<'a> {
+    /// Checks that the input ends with a whitespace character which is not escaped.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use helix_core::shellwords::Shellwords;
+    /// assert_eq!(Shellwords::from(" ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open foo.txt ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open").ends_with_whitespace(), false);
+    /// #[cfg(unix)]
+    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), false);
+    /// #[cfg(unix)]
+    /// assert_eq!(Shellwords::from(":open a\\ b.txt").ends_with_whitespace(), false);
+    /// ```
+    pub fn ends_with_whitespace(&self) -> bool {
+        matches!(self.state, State::OnWhitespace)
+    }
+
+    /// Returns the list of shellwords calculated from the input string.
+    pub fn words(&self) -> &[Cow<'a, str>] {
+        &self.words
+    }
+
+    /// Returns a list of strings which correspond to [`Self::words`] but represent the original
+    /// text in the input string - including escape characters - without separating whitespace.
+    pub fn parts(&self) -> &[&'a str] {
+        &self.parts
+    }
+
+    /// Render the template before creating a Shellwords
+    pub fn from_template(rendered: &'a str) -> Self {
+        let (state, words, parts) = Shellwords::parse_into_words(&rendered);
+        Self {
+            state,
+            words,
+            parts,
+        }
+    }
+    /// Takes a string and breaks it up into individual arguments
+    fn parse_into_words(input: &'a str) -> (State, Vec<Cow<str>>, Vec<&'a str>) {
         use State::*;
 
         let mut state = Unquoted;
@@ -156,43 +207,7 @@ impl<'a> From<&'a str> for Shellwords<'a> {
 
         debug_assert!(words.len() == parts.len());
 
-        Self {
-            state,
-            words,
-            parts,
-        }
-    }
-}
-
-impl<'a> Shellwords<'a> {
-    /// Checks that the input ends with a whitespace character which is not escaped.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use helix_core::shellwords::Shellwords;
-    /// assert_eq!(Shellwords::from(" ").ends_with_whitespace(), true);
-    /// assert_eq!(Shellwords::from(":open ").ends_with_whitespace(), true);
-    /// assert_eq!(Shellwords::from(":open foo.txt ").ends_with_whitespace(), true);
-    /// assert_eq!(Shellwords::from(":open").ends_with_whitespace(), false);
-    /// #[cfg(unix)]
-    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), false);
-    /// #[cfg(unix)]
-    /// assert_eq!(Shellwords::from(":open a\\ b.txt").ends_with_whitespace(), false);
-    /// ```
-    pub fn ends_with_whitespace(&self) -> bool {
-        matches!(self.state, State::OnWhitespace)
-    }
-
-    /// Returns the list of shellwords calculated from the input string.
-    pub fn words(&self) -> &[Cow<'a, str>] {
-        &self.words
-    }
-
-    /// Returns a list of strings which correspond to [`Self::words`] but represent the original
-    /// text in the input string - including escape characters - without separating whitespace.
-    pub fn parts(&self) -> &[&'a str] {
-        &self.parts
+        (state, words, parts)
     }
 }
 

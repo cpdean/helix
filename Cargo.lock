@@ -1270,6 +1270,7 @@ dependencies = [
  "indoc",
  "libc",
  "log",
+ "minijinja",
  "once_cell",
  "pulldown-cmark",
  "serde",
@@ -1586,6 +1587,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83faa42c0a078c393f6b29d5db232d8be22776a891f8f56e5284faee4a20b327"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "minijinja"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e652fc272a5c30f6fc4d2851c9a9d671a88383074e48fcb62e0779e32933d3c"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

@@ -8,6 +8,7 @@ use super::*;
 use helix_core::{encoding, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use minijinja::{context, Environment};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -2924,6 +2925,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            let rendered = do_template(input);
             let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
@@ -2941,8 +2943,18 @@ pub(super) fn command_mode(cx: &mut Context) {
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
+                // todo, pipe, pipe-to, run-shell-command
+                let shellwords = if args[0] == "sh" {
+                    match &rendered {
+                        Ok(r) => Shellwords::from_template(r),
+                        Err(_) => Shellwords::from(input),
+                    }
+                } else {
+                    Shellwords::from(input)
+                };
+                let actual_args = shellwords.words();
 
-                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
+                if let Err(e) = (cmd.fun)(cx, &actual_args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
             } else if event == PromptEvent::Validate {
@@ -2969,6 +2981,14 @@ pub(super) fn command_mode(cx: &mut Context) {
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);
     cx.push_layer(Box::new(prompt));
+}
+
+fn do_template(template: &str) -> Result<String, minijinja::Error> {
+    let mut env = Environment::new();
+    env.add_template("shell_expansion", template)?;
+    let tmpl = env.get_template("shell_expansion")?;
+
+    tmpl.render(context!(filename => "BigGoats.txt"))
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
