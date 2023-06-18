@@ -2931,7 +2931,6 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let rendered = do_template(input, cx);
             let parts = input.split_whitespace().collect::<Vec<&str>>();
             if parts.is_empty() {
                 return;
@@ -2949,18 +2948,8 @@ pub(super) fn command_mode(cx: &mut Context) {
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
-                // todo: pipe, pipe-to
-                let shellwords = if args[0] == "sh" || args[0] == "run-shell-command" {
-                    match &rendered {
-                        Ok(r) => Shellwords::from_template(r),
-                        Err(_) => Shellwords::from(input),
-                    }
-                } else {
-                    Shellwords::from(input)
-                };
-                let actual_args = shellwords.words();
 
-                if let Err(e) = (cmd.fun)(cx, &actual_args[1..], event) {
+                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
             } else if event == PromptEvent::Validate {
