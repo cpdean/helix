@@ -2996,6 +2996,12 @@ fn extract_template_variables(cx: &mut compositor::Context) -> minijinja::value:
     let line_start = text.line_to_byte(line);
     let column = text.char_to_byte(pos) - line_start;
 
+    // anchor line number and column
+    let anchor_pos = doc.selection(view.id).primary().anchor;
+    let anchor_line = text.char_to_line(anchor_pos);
+    let anchor_line_start = text.line_to_byte(anchor_line);
+    let anchor_column = text.char_to_byte(anchor_pos) - anchor_line_start;
+
     let file_path = doc.path().map(|p| p.to_str()).unwrap_or(Some(""));
     context!(
         filename => file_path,
@@ -3003,6 +3009,12 @@ fn extract_template_variables(cx: &mut compositor::Context) -> minijinja::value:
         cursor_line => line + 1,
         // TODO: maybe add 1 to column? not sure what tooling tends to want
         cursor_column => column,
+        anchor_line => anchor_line + 1,
+        anchor_column => anchor_column,
+        // add these extras to perserve line number ordering since some tools break if you pass
+        // them in out-of-order
+        selection_line_start => std::cmp::min(line + 1, anchor_line + 1),
+        selection_line_end => std::cmp::max(line + 1, anchor_line + 1),
     )
 }
 
